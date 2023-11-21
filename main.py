@@ -17,11 +17,10 @@ DIRECTORIO = r"C:\Users\Sonyvideo1\Downloads\tftp"
 
 
 
-
 def iniciar_servidor_tftp():
 
 
-   puerto_tftp = 2000
+   puerto_tftp = 69
 
 
    servidor = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -41,8 +40,6 @@ def iniciar_servidor_tftp():
        mensaje, direccion_cliente = servidor.recvfrom(512)
        print(f"Petición de cliente recibida - Dirección IPv4: {direccion_cliente}")
        print(f"Mensaje enviado:{mensaje}")
-
-       direccion_cliente = "0.0.0.0"
        procesar_solicitud(servidor,mensaje,direccion_cliente)
 
 
@@ -51,14 +48,10 @@ def iniciar_servidor_tftp():
 
 def procesar_solicitud(servidor, mensaje, direccion_cliente):
 
-   solicitud = mensaje.decode('ascii').split(" ")
-
-   op_code = int(solicitud[0])
-   ##print(op_code)
-   nombre_archivo = solicitud[1]
-   ##print(nombre_archivo)
-   modo = solicitud[3]
-   ##print(modo)
+   op_code = int.from_bytes(mensaje[0:2], 'big')
+   detalles = mensaje[2:].split(b'\0')
+   nombre_archivo = detalles[0].decode('ascii')
+   modo = detalles[1].decode('ascii')
 
 
    if op_code == OP_RRQ:
@@ -92,18 +85,17 @@ def manejar_rrq(servidor, nombre_archivo, direccion_cliente, modo):
 
 
 
-   with open(ruta_completa, 'r') as archivo:
+   with open(ruta_completa, 'rb') as archivo:
        bloque = 1
+       mensaje = OP_ACK.to_bytes(2,'big') + bloque.to_bytes(2,'big')
        data = archivo.read(512)
-       print("b")
+       print(data)
        while data:
-           print("a")
-           mensaje = OP_DATA.to_bytes(2, 'big') + bloque.to_bytes(2, 'big') + data
+           mensaje = OP_ACK.to_bytes(2, 'big') + (0).to_bytes(2, 'big')
            servidor.sendto(mensaje, direccion_cliente)
-
+           print(mensaje)
            # Esperar ACK
            try:
-               print("a")
                servidor.settimeout(10)  # Timeout para esperar el ACK
                while True:
                    ack, _ = servidor.recvfrom(4)
@@ -129,9 +121,9 @@ def manejar_wrq(servidor, nombre_archivo, direccion_cliente, modo):
    try:
        with open(ruta_completa, 'wb') as archivo:
            while True:
-               datos, _ = servidor.recvfrom(512 + 4)  # Recibir bloque de datos
-               bloque = int.from_bytes(datos[2:4], 'big')
-               contenido = datos[4:]
+               data, _ = servidor.recvfrom(512 + 4)  # Recibir bloque de datos
+               bloque = int.from_bytes(data[2:4], 'big')
+               contenido = data[4:]
 
 
                if modo == 'netascii':
