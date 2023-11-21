@@ -122,12 +122,13 @@ def manejar_wrq(servidor, nombre_archivo, direccion_cliente, modo):
        with open(ruta_completa, 'wb') as archivo:
            while True:
                data, _ = servidor.recvfrom(512 + 4)  # Recibir bloque de datos
-               bloque = int.from_bytes(data[2:4], 'big')
-               contenido = data[4:]
-
-
+               print(data)
                if modo == 'netascii':
                    data = data.replace(b'\n', b'\r\n')
+               bloque = int.from_bytes(data[2:4], 'big')
+               contenido = data[4:]
+               print(data)
+
 
 
                # Escribir datos en el archivo
