@@ -89,8 +89,13 @@ def manejar_rrq(servidor, nombre_archivo, direccion_cliente, modo):
        print(mensaje)
        servidor.sendto(mensaje, direccion_cliente)
        data = archivo.read(512)
+       if modo == 'netascii':
+           data = data.replace(b'\n', b'\r\n')
        while data:
+           mensaje = OP_DATA.to_bytes(2, 'big') + bloque.to_bytes(2,'big') + data
+           servidor.sendto(mensaje, direccion_cliente)
            print(mensaje)
+           bloque += 1
            # Esperar ACK
            try:
                servidor.settimeout(10)  # Timeout para esperar el ACK
@@ -103,14 +108,6 @@ def manejar_rrq(servidor, nombre_archivo, direccion_cliente, modo):
            except socket.timeout:
                print("Timeout esperando ACK para el bloque", bloque)
                return  # o reintentar enviar el mismo bloque
-
-
-           bloque += 1
-       if modo == 'netascii':
-           data = data.replace(b'\n', b'\r\n')
-
-       mensaje = OP_DATA.to_bytes(2, 'big') + bloque.to_bytes(2,'big') + data
-       servidor.sendto(mensaje, direccion_cliente)
 
 def manejar_wrq(servidor, nombre_archivo, direccion_cliente, modo):
    ruta_completa = os.path.join(DIRECTORIO, nombre_archivo)
