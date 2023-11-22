@@ -34,9 +34,6 @@ def iniciar_servidor_tftp():
 
    while True:
 
-
-
-
        mensaje, direccion_cliente = servidor.recvfrom(512)
        print(f"Petición de cliente recibida - Dirección IPv4: {direccion_cliente}")
        print(f"Mensaje enviado:{mensaje}")
@@ -70,6 +67,7 @@ def procesar_solicitud(servidor, mensaje, direccion_cliente):
 
 def manejar_rrq(servidor, nombre_archivo, direccion_cliente, modo):
    ruta_completa = os.path.join(DIRECTORIO, nombre_archivo)
+   print(ruta_completa)
 
 
    if nombre_archivo == "LIST_FILES":
@@ -87,18 +85,18 @@ def manejar_rrq(servidor, nombre_archivo, direccion_cliente, modo):
 
    with open(ruta_completa, 'rb') as archivo:
        bloque = 1
-       mensaje = OP_ACK.to_bytes(2,'big') + bloque.to_bytes(2,'big')
+       mensaje = OP_ACK.to_bytes(2, 'big') + (0).to_bytes(2, 'big')
+       print(mensaje)
+       servidor.sendto(mensaje, direccion_cliente)
        data = archivo.read(512)
-       print(data)
        while data:
-           mensaje = OP_ACK.to_bytes(2, 'big') + (0).to_bytes(2, 'big')
-           servidor.sendto(mensaje, direccion_cliente)
            print(mensaje)
            # Esperar ACK
            try:
                servidor.settimeout(10)  # Timeout para esperar el ACK
                while True:
-                   ack, _ = servidor.recvfrom(4)
+                   ack, _ = servidor.recvfrom(100)
+                   print(ack)
                    ack_bloque = int.from_bytes(ack[2:4], 'big')
                    if ack_bloque == bloque:
                        break
@@ -108,11 +106,11 @@ def manejar_rrq(servidor, nombre_archivo, direccion_cliente, modo):
 
 
            bloque += 1
-           data = archivo.read(512)
+       if modo == 'netascii':
+           data = data.replace(b'\n', b'\r\n')
 
-
-   if modo == 'netascii':
-       data = data.replace(b'\n', b'\r\n')
+       mensaje = OP_DATA.to_bytes(2, 'big') + bloque.to_bytes(2,'big') + data
+       servidor.sendto(mensaje, direccion_cliente)
 
 def manejar_wrq(servidor, nombre_archivo, direccion_cliente, modo):
    ruta_completa = os.path.join(DIRECTORIO, nombre_archivo)
